@@ -136,6 +136,13 @@ void CMyGame::OnInitialize()
 			m_tiles.push_back(new CSprite(x * 64.f + 32.f, y * 64.f + 32.f, new CGraphics("tiles.png", 3, 5, nTile % 3, nTile / 3), 0));
 		}
 	}
+
+	for (int y = 0; y < 12; y++) {
+		for (int x = 0; x < 20; x++) {
+			std::cout << m_tileLayout[y][x];
+		}
+		std::cout << endl;
+	}
 }
 
 
