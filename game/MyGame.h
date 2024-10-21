@@ -5,6 +5,9 @@ class CMyGame : public CGame
 	// Define sprites and other instance variables here
 	CSprite m_sprite;	// Sample sprite
 
+	static char m_tileLayout[12][20];
+	CSpriteList m_tiles;
+
 public:
 	CMyGame(void);
 	~CMyGame(void);
@@ -33,4 +36,7 @@ public:
 	virtual void OnRButtonUp(Uint16 x,Uint16 y);
 	virtual void OnMButtonDown(Uint16 x,Uint16 y);
 	virtual void OnMButtonUp(Uint16 x,Uint16 y);
+
+	// Functions
+	virtual void carvePath(int x, int y);
 };
