@@ -5,7 +5,7 @@ class CMyGame : public CGame
 	// Define sprites and other instance variables here
 	CSprite m_sprite;	// Sample sprite
 
-	static char m_tileLayout[12][20];
+	static char m_tileLayout[11][19];
 	CSpriteList m_tiles;
 
 public:

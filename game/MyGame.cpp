@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include "MyGame.h"
 
-char CMyGame::m_tileLayout[12][20];
+char CMyGame::m_tileLayout[11][19];
 
 struct Cell
 {
@@ -12,7 +12,7 @@ struct Cell
 // Check if the cell coordinates are within bound of maze grid
 bool isWithinBounds(int x, int y) 
 {
-	return (x >= 0 && x < 20 && y >= 0 && y < 12);
+	return (x > 0 && x < 19 && y > 0 && y < 11);
 }
 
 // Randomly shuffle the list of direction cells to make a more randomised maze
@@ -91,9 +91,15 @@ void CMyGame::OnDraw(CGraphics* g)
 void CMyGame::OnInitialize()
 {
 	// Fills the tile layout with walls for carving
-	for (int y = 0; y < 12; y++) {
-		for (int x = 0; x < 20; x++) {
-			m_tileLayout[y][x] = 'X';
+	for (int y = 0; y < 11; y++) {
+		for (int x = 0; x < 19; x++) {
+			// Ensure outermost cells are always walls
+			if (y == 0 || y == 11 || x == 0 || x == 19) {
+				m_tileLayout[y][x] = 'X';  // Outer walls
+			}
+			else {
+				m_tileLayout[y][x] = 'X';  // Initial maze layout filled with walls
+			}
 		}
 	}
 
@@ -104,8 +110,8 @@ void CMyGame::OnInitialize()
 		found = false;
 
 		// loop through gride, visiting odd numbers to allow room for walls
-		for (int y = 1; y < 12; y += 2) {
-			for (int x = 1; x < 20; x += 2) {
+		for (int y = 1; y < 11; y += 2) {
+			for (int x = 1; x < 19; x += 2) {
 				// If the cell is a wall, carve from here
 				if (m_tileLayout[y][x] == 'X') {
 					carvePath(x, y);
@@ -116,8 +122,8 @@ void CMyGame::OnInitialize()
 	}
 
 	// Loop through grid again to assign tiles to the grid
-	for (int y = 0; y < 12; y++) {
-		for (int x = 0; x < 20; x++) {
+	for (int y = 0; y < 11; y++) {
+		for (int x = 0; x < 19; x++) {
 			// Skip empty spaces
 			if (m_tileLayout[y][x] == ' ')
 				continue;
@@ -137,8 +143,8 @@ void CMyGame::OnInitialize()
 		}
 	}
 
-	for (int y = 0; y < 12; y++) {
-		for (int x = 0; x < 20; x++) {
+	for (int y = 0; y < 11; y++) {
+		for (int x = 0; x < 19; x++) {
 			std::cout << m_tileLayout[y][x];
 		}
 		std::cout << endl;
