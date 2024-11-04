@@ -1,12 +1,33 @@
 #pragma once
 
+struct CONNECTION
+{
+	int nEnd; 
+	float cost; 
+};
+
+struct NODE
+{
+	CVector pos;
+	list<CONNECTION> conlist;
+	float costSoFar;
+	int nConnection;
+	bool open, closed;
+};
+
 class CMyGame : public CGame
 {
 	// Define sprites and other instance variables here
-	CSprite m_sprite;	// Sample sprite
+	CSprite m_npc;	// Sample sprite
 
 	static char m_tileLayout[11][19];
 	CSpriteList m_tiles;
+
+	CSpriteList m_nodes;
+
+	vector<NODE> m_graph;
+	vector<CVector> coords;
+	list<CVector> m_waypoints;
 
 public:
 	CMyGame(void);
@@ -39,4 +60,7 @@ public:
 
 	// Functions
 	virtual void carvePath(int x, int y);
+	virtual void connectWaypoints();
+	virtual int findWaypointIndex(float x, float y);
+	virtual bool areWaypointsConnected(const CVector& start, const CVector& end);
 };
