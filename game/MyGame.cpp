@@ -2,6 +2,7 @@
 #include "MyGame.h"
 
 char CMyGame::m_tileLayout[11][19];
+bool reachedTarget = true;
 
 struct Cell
 {
@@ -9,21 +10,51 @@ struct Cell
 	Cell(int x, int y) : x(x), y(y) {}
 };
 
+// Generates a unique and random maze inside m_tileLayout.
+// Hunt and Kill Algorithm
+void CMyGame::MazeGeneration() 
+{
+	// Fills the tile layout with walls for carving
+	for (int y = 0; y < 11; y++) {
+		for (int x = 0; x < 19; x++) {
+			m_tileLayout[y][x] = 'X';
+		}
+	}
+	// HAK
+	bool found = true;
+	while (found) {
+		found = false;
+
+		// loop through gride, visiting odd numbers to allow room for walls
+		for (int y = 1; y < 11; y += 2) {
+			for (int x = 1; x < 19; x += 2) {
+				// If the cell is a wall, carve from here
+				if (m_tileLayout[y][x] == 'X') {
+					CarvePath(x, y);
+					found = true;
+				}
+			}
+		}
+	}
+}
+
 // Check if the cell coordinates are within bound of maze grid
-bool isWithinBounds(int x, int y) 
+bool IsWithinBounds(int x, int y) 
 {
 	return (x > 0 && x < 19 && y > 0 && y < 11);
 }
 
 // Randomly shuffle the list of direction cells to make a more randomised maze
 // Fisher-Yates shuffle algorithm
-void shuffle(std::vector<Cell>& directions) {
+void Shuffle(std::vector<Cell>& directions) {
 	for (int i = directions.size() - 1; i > 0; --i) {
 		int j = rand() % (i + 1);
 		std::swap(directions[i], directions[j]);
 	}
 }
 
+// Pathfind function to give the AI the direction to walk.
+// Dijkstra's pathfinding algorithm
 bool PathFind(vector<NODE>& graph, int nStart, int nGoal, vector<int>& path)
 {
 	list<int> open;
@@ -92,11 +123,12 @@ bool PathFind(vector<NODE>& graph, int nStart, int nGoal, vector<int>& path)
 	path.push_back(i);
 
 	reverse(path.begin(), path.end());
+	reachedTarget = false;
 	return true;
 }
 
 // Connects waypoints by checking neigbouring waypoints
-void CMyGame::connectWaypoints()
+void CMyGame::ConnectWaypoints()
 {
 	// Total waypoints
 	int totalWaypoints = coords.size();
@@ -117,11 +149,11 @@ void CMyGame::connectWaypoints()
 		// Go through each calculated neighbour
 		for (const auto& [neighborX, neighborY] : neighborPositions) {
 			// Get its index
-			int nIdx = findWaypointIndex(neighborX, neighborY);
+			int nIdx = FindWaypointIndex(neighborX, neighborY);
 
 			if (nIdx != -1) {  // Neighbor found
 				// Check if there is a wall between the waypoints
-				if (areWaypointsConnected(pos, coords[nIdx])) {
+				if (AreWaypointsConnected(pos, coords[nIdx])) {
 					float distance = Distance(pos, coords[nIdx]);
 					m_graph[i].conlist.push_back({ nIdx, distance });
 				}
@@ -130,7 +162,7 @@ void CMyGame::connectWaypoints()
 	}
 }
 
-int CMyGame::findWaypointIndex(float x, float y)
+int CMyGame::FindWaypointIndex(float x, float y)
 {
 	for (int i = 0; i < coords.size(); ++i)
 	{
@@ -141,7 +173,7 @@ int CMyGame::findWaypointIndex(float x, float y)
 }
 
 // Function to check if two waypoints are connected without walls in between
-bool CMyGame::areWaypointsConnected(const CVector& start, const CVector& end)
+bool CMyGame::AreWaypointsConnected(const CVector& start, const CVector& end)
 {
 	int x1 = static_cast<int>(start.m_x / 64.f);
 	int y1 = static_cast<int>(start.m_y / 64.f);
@@ -168,7 +200,7 @@ bool CMyGame::areWaypointsConnected(const CVector& start, const CVector& end)
 	return true; // No walls found
 }
 
-void CMyGame::carvePath(int x, int y) {
+void CMyGame::CarvePath(int x, int y) {
 	// Mark the current cell as a path
 	m_tileLayout[y][x] = ' ';
 
@@ -177,7 +209,7 @@ void CMyGame::carvePath(int x, int y) {
 
 	// List of directions (up, down, left, right)
 	std::vector<Cell> directions = { Cell(0, -2), Cell(0, 2), Cell(-2, 0), Cell(2, 0) };
-	shuffle(directions);       // Shuffle the directions
+	Shuffle(directions);       // Shuffle the directions
 
 	// Try each direction
 	for (auto& dir : directions) {
@@ -187,20 +219,19 @@ void CMyGame::carvePath(int x, int y) {
 		int betweenY = y + dir.y / 2;
 
 		// Check if the next cell is within the maze bounds and is wall
-		if (isWithinBounds(newX, newY) && m_tileLayout[newY][newX] == 'X') {
+		if (IsWithinBounds(newX, newY) && m_tileLayout[newY][newX] == 'X') {
 			// Carve the wall between cells
 			m_tileLayout[betweenY][betweenX] = ' ';
 
 			// Move to next cell from current cell
-			carvePath(newX, newY);
+			CarvePath(newX, newY);
 		}
 	}
 }
 
 
-CMyGame::CMyGame(void) : 
-	m_npc(400, 40, "rocket.bmp", CColor::Blue(), 0)	
-	// to initialise more sprites here use a comma-separated list
+CMyGame::CMyGame(void) :
+	enemy(400, 40, 119, 162, "fox.png", CColor::Green(128), 0)
 {
 	// TODO: add initialisation here
 }
@@ -217,34 +248,40 @@ void CMyGame::OnUpdate()
 {
 	Uint32 t = GetTime();
 
-	if (!m_waypoints.empty()) {
-		if (m_npc.GetSpeed() < 1) 
+	if (!m_waypoints.empty()) 
+	{
+		if (enemy.GetSpeed() < 1) 
 		{
-			m_npc.SetSpeed(500);
-			m_npc.SetDirection(m_waypoints.front() - m_npc.GetPosition());
-			m_npc.SetRotation(m_npc.GetDirection() - 90);
+			enemy.SetSpeed(500);
+			enemy.SetDirection(m_waypoints.front() - enemy.GetPosition());
+			enemy.SetRotation(enemy.GetDirection() - 90);
 		}
 
-		CVector v = m_waypoints.front() - m_npc.GetPosition();
-		if (Dot(m_npc.GetVelocity(), v) < 0) 
+		CVector v = m_waypoints.front() - enemy.GetPosition();
+		if (Dot(enemy.GetVelocity(), v) < 0)
 		{
 			m_waypoints.pop_front();
-			m_npc.SetVelocity(0, 0);
-			m_npc.SetRotation(0);
+			enemy.SetVelocity(0, 0);
+			enemy.SetRotation(0);
+
+			if (m_waypoints.empty() && !reachedTarget) 
+			{
+				reachedTarget = true;
+				std::cout << "Reached target" << endl;
+			}
 		}
-		
 	}
 
 	// TODO: add the game update code here
-	m_npc.Update(t);	// this will update the sample rocket sprite
+	enemy.Update(t);	// this will update the sample rocket sprite
 }
 
 void CMyGame::OnDraw(CGraphics* g)
 {
 	// TODO: add drawing code here
-	m_npc.Draw(g);	// this will draw the sample rocket sprite
-	m_tiles.for_each(&CSprite::Draw, g);
+	enemy.Draw(g);	// this will draw the sample rocket sprite
 
+	m_tiles.for_each(&CSprite::Draw, g);
 	m_nodes.for_each(&CSprite::Draw, g);
 
 	for (NODE n : m_graph)
@@ -261,36 +298,8 @@ void CMyGame::OnDraw(CGraphics* g)
 // one time initialisation
 void CMyGame::OnInitialize()
 {
-	// Fills the tile layout with walls for carving
-	for (int y = 0; y < 11; y++) {
-		for (int x = 0; x < 19; x++) {
-			// Ensure outermost cells are always walls
-			if (y == 0 || y == 11 || x == 0 || x == 19) {
-				m_tileLayout[y][x] = 'X';  // Outer walls
-			}
-			else {
-				m_tileLayout[y][x] = 'X';  // Initial maze layout filled with walls
-			}
-		}
-	}
-
 	// Start maze generation
-	// Hunt and Kill alorithm
-	bool found = true;
-	while (found) {
-		found = false;
-
-		// loop through gride, visiting odd numbers to allow room for walls
-		for (int y = 1; y < 11; y += 2) {
-			for (int x = 1; x < 19; x += 2) {
-				// If the cell is a wall, carve from here
-				if (m_tileLayout[y][x] == 'X') {
-					carvePath(x, y);
-					found = true;
-				}
-			}
-		}
-	}
+	MazeGeneration();
 
 	// Loop through grid again to assign tiles to the grid
 	for (int y = 0; y < 11; y++) {
@@ -326,7 +335,7 @@ void CMyGame::OnInitialize()
 	for (CVector v : coords)
 		m_graph.push_back(NODE{ v });
 
-	connectWaypoints();
+	ConnectWaypoints();
 
 	for (int i = 0; i < m_graph.size(); i++) {
 		NODE& node = m_graph[i];
@@ -351,42 +360,26 @@ void CMyGame::OnInitialize()
 	}
 }
 
-void ResetGraph(std::vector<NODE>& graph)
-{
-	for (NODE& node : graph)
-	{
-		node.open = false;
-		node.closed = false;
-	}
-}
-
 // called when a new game is requested (e.g. when F2 pressed)
 // use this function to prepare a menu or a welcome screen
 void CMyGame::OnDisplayMenu()
 {
+	enemy.SetPosition(m_graph[0].pos);
 	StartGame();	// exits the menu mode and starts the game mode
 }
 
 // called when a new game is started
 // as a second phase after a menu or a welcome screen
-void CMyGame::OnStartGame()
-{
-}
+void CMyGame::OnStartGame() { }
 
 // called when a new level started - first call for nLevel = 1
-void CMyGame::OnStartLevel(Sint16 nLevel)
-{
-}
+void CMyGame::OnStartLevel(Sint16 nLevel) { }
 
 // called when the game is over
-void CMyGame::OnGameOver()
-{
-}
+void CMyGame::OnGameOver() { }
 
 // one time termination code
-void CMyGame::OnTerminate()
-{
-}
+void CMyGame::OnTerminate() { }
 
 /////////////////////////////////////////////////////
 // Keyboard Event Handlers
@@ -400,19 +393,12 @@ void CMyGame::OnKeyDown(SDLKey sym, SDLMod mod, Uint16 unicode)
 	if (sym == SDLK_F2)
 		NewGame();
 }
-
-void CMyGame::OnKeyUp(SDLKey sym, SDLMod mod, Uint16 unicode)
-{
-}
-
+void CMyGame::OnKeyUp(SDLKey sym, SDLMod mod, Uint16 unicode) { }
 
 /////////////////////////////////////////////////////
 // Mouse Events Handlers
 
-void CMyGame::OnMouseMove(Uint16 x,Uint16 y,Sint16 relx,Sint16 rely,bool bLeft,bool bRight,bool bMiddle)
-{
-}
-
+void CMyGame::OnMouseMove(Uint16 x,Uint16 y,Sint16 relx,Sint16 rely,bool bLeft,bool bRight,bool bMiddle) { }
 void CMyGame::OnLButtonDown(Uint16 x, Uint16 y)
 {
 	CVector v(x, y);
@@ -424,7 +410,7 @@ void CMyGame::OnLButtonDown(Uint16 x, Uint16 y)
 	// Find closest node to NPC
 	vector<NODE>::iterator iFirst = min_element(m_graph.begin(), m_graph.end(),
 		[this](NODE& n1, NODE& n2) -> bool {
-			return Distance(n1.pos, m_npc.GetPos()) < Distance(n2.pos, m_npc.GetPos());
+			return Distance(n1.pos, enemy.GetPos()) < Distance(n2.pos, enemy.GetPos());
 		});
 	int nFirst = iFirst - m_graph.begin();
 	std::cout << "Closest node to NPC: " << nFirst << std::endl;
@@ -440,7 +426,7 @@ void CMyGame::OnLButtonDown(Uint16 x, Uint16 y)
 	// Clear current waypoints
 	if (!m_waypoints.empty()) {
 		m_waypoints.clear();
-		m_npc.SetVelocity(0, 0);
+		enemy.SetVelocity(0, 0);
 	}
 
 	// Calculate path
@@ -450,30 +436,9 @@ void CMyGame::OnLButtonDown(Uint16 x, Uint16 y)
 			m_waypoints.push_back(m_graph[i].pos);
 		m_waypoints.push_back(v); // End position at click point
 	}
-
-	// Debug path nodes
-	for (int i : path) {
-		std::cout << "Path node: " << i << " at position (" << m_graph[i].pos.m_x << ", " << m_graph[i].pos.m_y << ")" << std::endl;
-	}
 }
-
-
-void CMyGame::OnLButtonUp(Uint16 x,Uint16 y)
-{
-}
-
-void CMyGame::OnRButtonDown(Uint16 x,Uint16 y)
-{
-}
-
-void CMyGame::OnRButtonUp(Uint16 x,Uint16 y)
-{
-}
-
-void CMyGame::OnMButtonDown(Uint16 x,Uint16 y)
-{
-}
-
-void CMyGame::OnMButtonUp(Uint16 x,Uint16 y)
-{
-}
+void CMyGame::OnLButtonUp(Uint16 x,Uint16 y) { }
+void CMyGame::OnRButtonDown(Uint16 x,Uint16 y) { }
+void CMyGame::OnRButtonUp(Uint16 x,Uint16 y) { }
+void CMyGame::OnMButtonDown(Uint16 x,Uint16 y) { }
+void CMyGame::OnMButtonUp(Uint16 x,Uint16 y) { }

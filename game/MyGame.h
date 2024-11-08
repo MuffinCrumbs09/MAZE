@@ -1,5 +1,7 @@
 #pragma once
 
+#include "SpriteAgent.h"
+
 struct CONNECTION
 {
 	int nEnd; 
@@ -18,7 +20,7 @@ struct NODE
 class CMyGame : public CGame
 {
 	// Define sprites and other instance variables here
-	CSprite m_npc;	// Sample sprite
+	CSpriteAgent enemy;
 
 	static char m_tileLayout[11][19];
 	CSpriteList m_tiles;
@@ -59,8 +61,9 @@ public:
 	virtual void OnMButtonUp(Uint16 x,Uint16 y);
 
 	// Functions
-	virtual void carvePath(int x, int y);
-	virtual void connectWaypoints();
-	virtual int findWaypointIndex(float x, float y);
-	virtual bool areWaypointsConnected(const CVector& start, const CVector& end);
+	virtual void CarvePath(int x, int y);
+	virtual void ConnectWaypoints();
+	virtual int FindWaypointIndex(float x, float y);
+	virtual bool AreWaypointsConnected(const CVector& start, const CVector& end);
+	virtual void MazeGeneration();
 };
